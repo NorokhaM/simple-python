@@ -3,7 +3,7 @@ kind: CronJob
 metadata:
   name: python-simple-cronjob
 spec:
-  schedule: "/1 * * * *"
+  schedule: "*/1 * * * *"
   jobTemplate:
     spec:
       ttlSecondsAfterFinished: 20
