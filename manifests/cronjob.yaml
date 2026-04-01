@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: python-simple-cronjob
+spec:
+  schedule: "/1 * * * *"
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 20
+      template:
+        spec:
+          containers:
+          - name: python-simple-cronjob
+            image: norokham/hello-world:v1
+            imagePullPolicy: Always
+          restartPolicy: OnFailure
