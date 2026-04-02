@@ -64,7 +64,7 @@ pipeline {
                         script {
                             env.DOCKER_IMAGE = "${APP_NAME}:${env.VERSION}"
                         }
-                        sh 'git push origin HEAD:refs/heads/'"${env.VERSION}"
+                        sh 'git push origin HEAD:refs/heads/'"${env.VERSION}"'
                         sh 'docker build -t $DOCKER_USER/$DOCKER_IMAGE .'
                         sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                         sh 'docker push $DOCKER_USER/$DOCKER_IMAGE'
