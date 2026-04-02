@@ -37,7 +37,7 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    env.GIT_BRANCH_NAME = sh(script: "git symbolic-ref --short HEAD", returnStdout: true).trim()
+                    env.GIT_BRANCH_NAME = sh(script: "git branch -r --contains HEAD | head -1 | sed 's/.*\\///g' | tr -d ' '", returnStdout: true).trim()
                     echo "Current branch is: ${env.GIT_BRANCH_NAME}"
                 }
             }
