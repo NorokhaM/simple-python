@@ -37,7 +37,7 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    env.GIT_BRANCH_NAME = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+                    env.GIT_BRANCH_NAME = sh(script: "git symbolic-ref --short HEAD", returnStdout: true).trim()
                     echo "Current branch is: ${env.GIT_BRANCH_NAME}"
                 }
             }
@@ -59,7 +59,7 @@ pipeline {
         stage('Push to Registry') {
             steps {
                 container('docker') {
-                    withCredentials([usernamePassword(credentialsId: 'DOCKER-CREDENTIALS', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    withCredentials([usernamePassword(credentialsId: 'DOCKER_CREDENTIALS', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                         sh 'docker push $DOCKER_IMAGE'
                         sh 'docker logout'
