@@ -1,0 +1,36 @@
+pipeline {
+    agent {
+        kubernetes {
+            label 'python311-agent'
+            yaml '''
+                apiVersion: v1
+                kind: Pod
+                spec:
+                    containers:
+                    - name: python
+                      image: python:3.11-alpine
+        '''
+        }
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Install Dependencies') {
+            steps {
+                container('python') {
+                    sh 'pip install --upgrade pip'
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                container('python') {
+                    sh 'python -m py_compile *.py'
+                }
+            }
+        }
+    }
+}
