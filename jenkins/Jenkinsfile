@@ -57,15 +57,12 @@ pipeline {
                 }
             }
         }
-        stage('Build a Docker Image') {
+        stage('Change image version in cronjob yaml') {
             steps {
-                container('docker') {
-                    withCredentials([usernamePassword(credentialsId: 'DOCKER_CREDENTIALS', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        script {
-                            env.DOCKER_IMAGE = "${APP_NAME}:${env.VERSION}"
-                        }
-                        sh "docker build -t $DOCKER_USER/$DOCKER_IMAGE ."
-                    }
+                container('python') {
+                    sh '''
+                        sed -i "s|image: simple-python:.*|image: simple-python:${VERSION}|g" k8s/cronjob.yaml
+                    '''
                 }
             }
         }
@@ -79,6 +76,18 @@ pipeline {
                             git config --global user.name 'Jenkins'
                             git push "https://${GIT_USER}:${GIT_PASS}@github.com/NorokhaM/simple-python.git" HEAD:refs/heads/${VERSION}
                         '''
+                    }
+                }
+            }
+        }
+        stage('Build a Docker Image') {
+            steps {
+                container('docker') {
+                    withCredentials([usernamePassword(credentialsId: 'DOCKER_CREDENTIALS', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        script {
+                            env.DOCKER_IMAGE = "${APP_NAME}:${env.VERSION}"
+                        }
+                        sh "docker build -t $DOCKER_USER/$DOCKER_IMAGE ."
                     }
                 }
             }
