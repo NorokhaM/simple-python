@@ -30,6 +30,11 @@ spec:
         APP_NAME = 'simple-python'
     }
 
+    parameters {
+        string(name: 'DOCKER_USER', defaultValue: '', description: 'Docker Hub username')
+        string(name: 'VERSION', defaultValue: '', description: 'Version to build and push (optional)')
+    }
+
     stages {
 
         stage('Checkout') {
