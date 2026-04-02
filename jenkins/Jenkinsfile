@@ -9,6 +9,9 @@ pipeline {
                     containers:
                     - name: python
                       image: python:3.11-alpine
+                      command:
+                      - cat
+                      tty: true
         '''
         }
     }
