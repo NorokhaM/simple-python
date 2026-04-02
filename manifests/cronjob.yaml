@@ -11,6 +11,6 @@ spec:
         spec:
           containers:
           - name: python-simple-cronjob
-            image: norokham/simple-python:v1
+            image: norokham/simple-python:v1-32
             imagePullPolicy: Always
           restartPolicy: OnFailure
