@@ -103,15 +103,14 @@ spec:
                             git config --global user.email "jenkins@example.com"
                             git config --global user.name "Jenkins"
 
-                            git checkout -b ${VERSION}
+                            git checkout master
 
                             sed -i "s|image: .*/simple-python:.*|image: $DOCKER_USER/simple-python:${VERSION}|g" manifests/cronjob.yaml
 
                             git add manifests/cronjob.yaml
+                            git commit -m "Update image to ${VERSION}"
 
-                            git diff --cached --quiet || git commit -m "Update image to ${VERSION}"
-
-                            git push https://${GIT_USER}:${GIT_PASS}@github.com/NorokhaM/simple-python.git ${VERSION}
+                            git push origin master
                         '''
                     }
                 }
