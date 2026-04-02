@@ -61,7 +61,7 @@ pipeline {
             steps {
                 container('python') {
                     sh '''
-                        sed -i "s|image: simple-python:.*|image: simple-python:${VERSION}|g" k8s/cronjob.yaml
+                        sed -i "s|image: simple-python:.*|image: simple-python:${VERSION}|g" manifests/cronjob.yaml
                     '''
                 }
             }
