@@ -1,7 +1,6 @@
 pipeline {
     environment {
         APP_NAME = 'simple-python'
-        DOCKER_IMAGE = "${APP_NAME}:v1"
     }
     
     agent {
@@ -39,6 +38,15 @@ pipeline {
                 script {
                     env.GIT_BRANCH_NAME = sh(script: "git branch -r --contains HEAD | head -1 | sed 's/.*\\///g' | tr -d ' '", returnStdout: true).trim()
                     echo "Current branch is: ${env.GIT_BRANCH_NAME}"
+                    if (env.GIT_BRANCH_NAME == 'master') {
+                        env.VERSION = 'v1'
+                    } else if (env.GIT_BRANCH_NAME =~ /^v(\d+)$/) {
+                        def versionNum = (env.GIT_BRANCH_NAME - 'v').toInteger() + 1
+                        env.VERSION = "v${versionNum}"
+                    } else {
+                        env.VERSION = env.GIT_BRANCH_NAME
+                    }
+                    echo "Docker version will be: ${env.VERSION}"
                 }
             }
         }
@@ -53,6 +61,8 @@ pipeline {
             steps {
                 container('docker') {
                     withCredentials([usernamePassword(credentialsId: 'DOCKER_CREDENTIALS', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        env.DOCKER_IMAGE = "${APP_NAME}:${env.VERSION}"
+                        sh 'git push origin HEAD:refs/heads/${env.VERSION}'
                         sh 'docker build -t $DOCKER_USER/$DOCKER_IMAGE .'
                         sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                         sh 'docker push $DOCKER_USER/$DOCKER_IMAGE'
