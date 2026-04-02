@@ -1,101 +1,132 @@
 pipeline {
-    environment {
-        APP_NAME = 'simple-python'
-    }
-    
     agent {
         kubernetes {
             label 'python311-agent'
             yaml '''
-                apiVersion: v1
-                kind: Pod
-                spec:
-                    containers:
-                    - name: python
-                      image: python:3.11-alpine
-                      command:
-                      - cat
-                      tty: true
-                    - name: docker
-                      image: docker:latest
-                      command:
-                      - cat
-                      tty: true
-                      volumeMounts:
-                      - name: docker-sock
-                        mountPath: /var/run/docker.sock
-                    volumes:
-                    - name: docker-sock
-                      hostPath:
-                        path: /var/run/docker.sock
-        '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: python
+    image: python:3.11-alpine
+    command: ['cat']
+    tty: true
+  - name: docker
+    image: docker:24
+    command: ['cat']
+    tty: true
+    volumeMounts:
+    - name: docker-sock
+      mountPath: /var/run/docker.sock
+  volumes:
+  - name: docker-sock
+    hostPath:
+      path: /var/run/docker.sock
+'''
         }
     }
+
+    environment {
+        APP_NAME = 'simple-python'
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Prepare Version') {
+            steps {
                 script {
-                    env.GIT_BRANCH_NAME = sh(script: "git branch -r --contains HEAD | head -1 | sed 's/.*\\///g' | tr -d ' '", returnStdout: true).trim()
-                    echo "Current branch is: ${env.GIT_BRANCH_NAME}"
-                    if (env.GIT_BRANCH_NAME == 'master') {
-                        env.VERSION = 'v1'
-                    } else if (env.GIT_BRANCH_NAME =~ /^v(\d+)$/) {
-                        def versionNum = (env.GIT_BRANCH_NAME - 'v').toInteger() + 1
+                    def branch = env.BRANCH_NAME
+                    echo "Branch: ${branch}"
+
+                    if (branch == 'master' || branch == 'main') {
+                        env.VERSION = "v1"
+                    } else if (branch ==~ /^v\\d+$/) {
+                        def versionNum = (branch - 'v').toInteger() + 1
                         env.VERSION = "v${versionNum}"
                     } else {
-                        env.VERSION = env.GIT_BRANCH_NAME
+                        env.VERSION = branch
                     }
-                    echo "Docker version will be: ${env.VERSION}"
+
+                    env.DOCKER_IMAGE = "${APP_NAME}:${env.VERSION}"
+                    echo "Version: ${env.VERSION}"
                 }
             }
         }
-        stage('Install Dependencies') {
-            steps {
-                container('python') {
-                    sh 'pip install --upgrade pip'
-                }
-            }
-        }
-        stage('Change image version and Push') {
+
+        stage('Build Image') {
             steps {
                 container('docker') {
-                    withCredentials([usernamePassword(credentialsId: 'GIT_CREDENTIALS', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'DOCKER_CREDENTIALS',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
                         sh '''
-                            git config --global --add safe.directory /home/jenkins/agent/workspace/python-simple/python-simple
-                            git config --global user.email 'jenkins@example.com'
-                            git config --global user.name 'Jenkins'
-                            sed -i "s|image: simple-python:.*|image: simple-python:${VERSION}|g" manifests/cronjob.yaml
-                            git add manifests/cronjob.yaml
-                            git commit -m "Update image version to ${VERSION}"
-                            git push "https://${GIT_USER}:${GIT_PASS}@github.com/NorokhaM/simple-python.git" HEAD:refs/heads/${VERSION}
+                            docker build -t $DOCKER_USER/$DOCKER_IMAGE .
                         '''
                     }
                 }
             }
         }
-        stage('Build a Docker Image') {
+
+        stage('Push Image') {
             steps {
                 container('docker') {
-                    withCredentials([usernamePassword(credentialsId: 'DOCKER_CREDENTIALS', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        script {
-                            env.DOCKER_IMAGE = "${APP_NAME}:${env.VERSION}"
-                        }
-                        sh "docker build -t $DOCKER_USER/$DOCKER_IMAGE ."
+                    withCredentials([usernamePassword(
+                        credentialsId: 'DOCKER_CREDENTIALS',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh '''
+                            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                            docker push $DOCKER_USER/$DOCKER_IMAGE
+                            docker logout
+                        '''
                     }
                 }
             }
         }
-        stage('Push to Registry') {
+
+        stage('Update Manifests & Push') {
             steps {
                 container('docker') {
-                    withCredentials([usernamePassword(credentialsId: 'DOCKER_CREDENTIALS', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                        sh 'docker push $DOCKER_USER/$DOCKER_IMAGE'
-                        sh 'docker logout'
+                    withCredentials([usernamePassword(
+                        credentialsId: 'GIT_CREDENTIALS',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_PASS'
+                    )]) {
+                        sh '''
+                            git config --global user.email "jenkins@example.com"
+                            git config --global user.name "Jenkins"
+
+                            git checkout -B ${VERSION}
+
+                            sed -i "s|image: .*/simple-python:.*|image: $DOCKER_USER/simple-python:${VERSION}|g" manifests/cronjob.yaml
+
+                            git add manifests/cronjob.yaml
+
+                            git diff --cached --quiet || git commit -m "Update image to ${VERSION}"
+
+                            git push https://${GIT_USER}:${GIT_PASS}@github.com/NorokhaM/simple-python.git ${VERSION}
+                        '''
                     }
                 }
             }
+        }
+    }
+
+    post {
+        failure {
+            echo "Pipeline failed 💀"
+        }
+        success {
+            echo "Pipeline completed 🚀"
         }
     }
 }
