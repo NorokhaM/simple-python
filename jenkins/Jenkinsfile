@@ -61,7 +61,9 @@ pipeline {
             steps {
                 container('docker') {
                     withCredentials([usernamePassword(credentialsId: 'DOCKER_CREDENTIALS', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        env.DOCKER_IMAGE = "${APP_NAME}:${env.VERSION}"
+                        script {
+                            env.DOCKER_IMAGE = "${APP_NAME}:${env.VERSION}"
+                        }
                         sh 'git push origin HEAD:refs/heads/${env.VERSION}'
                         sh 'docker build -t $DOCKER_USER/$DOCKER_IMAGE .'
                         sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
