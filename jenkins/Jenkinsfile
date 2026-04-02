@@ -41,9 +41,7 @@ spec:
         stage('Prepare Version') {
             steps {
                 script {
-                    def branch = env.BRANCH_NAME ?: sh(
-                        script: "git rev-parse --abbrev-ref HEAD",
-                        returnStdout: true).trim()
+                    def branch = sh(script: "git branch -r --contains HEAD | head -1 | sed 's/.*\\///g' | tr -d ' '", returnStdout: true).trim()
 
                     echo "Branch: ${branch}"
 
