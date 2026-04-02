@@ -110,7 +110,7 @@ spec:
                             git add manifests/cronjob.yaml
                             git commit -m "Update image to ${VERSION}"
 
-                            git push origin master
+                            git push https://${GIT_USER}:${GIT_PASS}@github.com/NorokhaM/simple-python.git master
                         '''
                     }
                 }
